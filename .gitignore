@@ -1,0 +1,26 @@
+# dot files
+/.vscode/launch.json
+/.settings
+/.eide/log
+/.eide.usr.ctx.json
+
+# project out
+/build
+/bin
+/obj
+/out
+
+# eide template
+*.ept
+*.eide-template
+.eide/debug.arm.options.gcc.json
+.eide/debug.files.options.yml
+.eide/eide.json
+.eide/release.arm.options.gcc.json
+.vscode/settings.json
+.vscode/tasks.json
+Public/DOWNLO~1/iocSpec10607855474536138165.xml
+Public/DOWNLO~1/sqlite-3.34.0-e4dc6459-2379-4b2a-97ab-e48e57596c85-sqlitejdbc.dll
+Public/DOWNLO~1/sqlite-3.34.0-e4dc6459-2379-4b2a-97ab-e48e57596c85-sqlitejdbc.dll.lck
+Public/DOWNLO~1/hsperfdata_廖唯一/17520
+.clang-format
