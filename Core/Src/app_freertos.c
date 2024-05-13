@@ -22,10 +22,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
 #include "usart.h"
 #include "OLED.H"
 #include "rtc.h"
 #include "queue.h"
+#include "semphr.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -64,6 +66,7 @@ const osThreadAttr_t defaultTask_attributes = {
 /* USER CODE BEGIN FunctionPrototypes */
 void OledShowTask(void *argument);
 void RtcGetTime(void *argument);
+char StringDetect(char *str, char *target);
 /* USER CODE END FunctionPrototypes */
 
 /**
@@ -83,6 +86,7 @@ void MX_FREERTOS_Init(void)
 
     /* USER CODE BEGIN RTOS_SEMAPHORES */
     /* add semaphores, ... */
+    // xSemaphoreCreateBinary(Semaphore1);
     /* USER CODE END RTOS_SEMAPHORES */
 
     /* USER CODE BEGIN RTOS_TIMERS */
@@ -94,8 +98,6 @@ void MX_FREERTOS_Init(void)
     TimeQueue = xQueueCreate(1, sizeof(RTC_TimeTypeDef));
     DateQueue = xQueueCreate(1, sizeof(RTC_DateTypeDef));
     QueueSet1 = xQueueCreateSet(2);
-    // xQueueAddToSet(TimeQueue, QueueSet1);
-    // xQueueAddToSet(DateQueue, QueueSet1);
     /* USER CODE END RTOS_QUEUES */
     /* creation of defaultTask */
     defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
@@ -138,7 +140,7 @@ void OledShowTask(void *argument)
         xQueueReceive(TimeQueue, &GetTime, portMAX_DELAY);
         xQueueReceive(DateQueue, &GetDate, portMAX_DELAY);
         OLED_Printf(1, 1, "n = %d", n++);
-        OLED_Printf(2, 1, "%02d/%02d/%02d", GetDate.Date, GetDate.Month, GetDate.Year);
+        OLED_Printf(2, 1, "%02d/%02d/%02d", GetDate.Year, GetDate.Month, GetDate.Date);
         OLED_Printf(3, 1, "%02d:%02d:%02d", GetTime.Hours, GetTime.Minutes, GetTime.Seconds);
         osDelay(100);
     }
@@ -154,9 +156,31 @@ void RtcGetTime(void *argument)
         HAL_RTC_GetDate(&hrtc, &GetDate, RTC_FORMAT_BIN);
         xQueueSend(TimeQueue, &GetTime, 0);
         xQueueSend(DateQueue, &GetDate, 0);
-        //HAL_UART_Transmit(&huart1, "hell\n", 6,100);
         osDelay(500);
     }
+}
+
+/**
+ * @brief 检查字符串str中是否包含字符串target
+ * @param str 需要检查的字符串
+ * @param target 目标字符串
+ * @note str和target中包含的字符串可以包含通配符'*'，表示任意字符或任意长度字符串
+ * @return 相同返回1，不相同返回0
+ */
+char StringDetect(char *str, char *target)
+{
+    for (int i = 0, j = 0; str[i] != '\0'; i++, j++) {
+        if (str[i] == '*') {
+            i++;
+            for (; target[j] != '\0'; j++) {
+                if (str[i] == target[j])
+                    break;
+            }
+        }
+        if (str[i] != target[j])
+            return 0;
+    }
+    return 1;
 }
 
 //* 中断程序
@@ -167,13 +191,18 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
     if (huart == &huart1) {
-        HAL_UART_Transmit_DMA(huart, RX_Data, Size);
-        if (RX_Data[0] == 'S' && RX_Data[1] == 'D') {
-            sscanf(RX_Data, "SD:%d-%d-%d", (int *)&SetDate.Year, (int *)&SetDate.Month, (int *)&SetDate.Date);
+        if (StringDetect("SD:*-*-*", (char *)RX_Data)) {
+            int year = 0;
+            sscanf((char *)RX_Data, "SD:%d-%d-%d", (int *)&year, (int *)&SetDate.Month, (int *)&SetDate.Date);
+            SetDate.Year = year;
             HAL_RTC_SetDate(&hrtc, &SetDate, RTC_FORMAT_BIN);
-        } else if (RX_Data[0] == 'S' && RX_Data[1] == 'T') {
-            sscanf(RX_Data, "ST:%d:%d:%d", (int *)&SetTime.Hours, (int*)&SetTime.Minutes, (int *)&SetTime.Seconds);
+            HAL_UART_Transmit(&huart1, (uint8_t *)"Data setting successful\n", 24, 100);
+        } else if (StringDetect("ST:*:*:*", (char *)RX_Data)) {
+            sscanf((char *)RX_Data, "ST:%d:%d:%d", (int *)&SetTime.Hours, (int *)&SetTime.Minutes, (int *)&SetTime.Seconds);
             HAL_RTC_SetTime(&hrtc, &SetTime, RTC_FORMAT_BIN);
+            HAL_UART_Transmit(&huart1, (uint8_t *)"Time setting successful\n", 24, 100);
+        } else {
+            HAL_UART_Transmit(&huart1, (uint8_t *)"Command Not Found\n", 18, 100);
         }
         HAL_UARTEx_ReceiveToIdle_DMA(huart, RX_Data, 100);
     }
