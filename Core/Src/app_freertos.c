@@ -97,7 +97,15 @@ void MX_FREERTOS_Init(void)
     /* add queues, ... */
     TimeQueue = xQueueCreate(1, sizeof(RTC_TimeTypeDef));
     DateQueue = xQueueCreate(1, sizeof(RTC_DateTypeDef));
+    if (TimeQueue == NULL || DateQueue == NULL) {
+        OLED_Printf(1, 1, "Queue Create Failed");
+        while (1);
+    }
     QueueSet1 = xQueueCreateSet(2);
+    if (QueueSet1 == NULL) {
+        OLED_Printf(1, 1, "QueueSet Failed");
+        while (1);
+    }
     /* USER CODE END RTOS_QUEUES */
     /* creation of defaultTask */
     defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
@@ -110,6 +118,12 @@ void MX_FREERTOS_Init(void)
 
     /* USER CODE BEGIN RTOS_EVENTS */
     /* add events, ... */
+    BaseType_t err = xQueueAddToSet(TimeQueue, QueueSet1);
+    err            = xQueueAddToSet(DateQueue, QueueSet1);
+    if (err != pdPASS) {
+        OLED_Printf(1, 1, "Add failed");
+        while (1);
+    }
     /* USER CODE END RTOS_EVENTS */
 }
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -131,17 +145,22 @@ void StartDefaultTask(void *argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+//* 把队列添加到队列集后，队列集会自动检测队列中的数据是否接收。
+//!! 注意：读队列前，需要读队列集信息，不然无法读队列
 void OledShowTask(void *argument)
 {
     RTC_TimeTypeDef GetTime = {0};
     RTC_DateTypeDef GetDate = {0};
-    int n                   = 0;
+    OLED_Printf(1, 1, "The Date");
     for (;;) {
-        xQueueReceive(TimeQueue, &GetTime, portMAX_DELAY);
-        xQueueReceive(DateQueue, &GetDate, portMAX_DELAY);
-        OLED_Printf(1, 1, "n = %d", n++);
-        OLED_Printf(2, 1, "%02d/%02d/%02d", GetDate.Year, GetDate.Month, GetDate.Date);
-        OLED_Printf(3, 1, "%02d:%02d:%02d", GetTime.Hours, GetTime.Minutes, GetTime.Seconds);
+        QueueHandle_t temp = xQueueSelectFromSet(QueueSet1, portMAX_DELAY);
+        if (temp == TimeQueue) {
+            xQueueReceive(TimeQueue, &GetTime, portMAX_DELAY);
+            OLED_Printf(3, 1, "%02d:%02d:%02d", GetTime.Hours, GetTime.Minutes, GetTime.Seconds);
+        } else if (temp == DateQueue) {
+            xQueueReceive(DateQueue, &GetDate, portMAX_DELAY);
+            OLED_Printf(2, 1, "%02d/%02d/%02d", GetDate.Year, GetDate.Month, GetDate.Date);
+        }
         osDelay(100);
     }
 }
@@ -153,10 +172,11 @@ void RtcGetTime(void *argument)
     RTC_DateTypeDef GetDate = {0};
     for (;;) {
         HAL_RTC_GetTime(&hrtc, &GetTime, RTC_FORMAT_BIN);
+
         HAL_RTC_GetDate(&hrtc, &GetDate, RTC_FORMAT_BIN);
         xQueueSend(TimeQueue, &GetTime, 0);
-        xQueueSend(DateQueue, &GetDate, 0);
         osDelay(500);
+        xQueueSend(DateQueue, &GetDate, 0);
     }
 }
 
