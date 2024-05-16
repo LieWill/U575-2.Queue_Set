@@ -1,0 +1,11 @@
+{
+  "configurations": [
+    {
+      "name": "STM32",
+      "includePath": [],
+      "defines": [],
+      "compilerPath": "C:\\USERS\\廖唯一\\.EIDE\\TOOLS\\GCC_ARM\\BIN\\ARM-NONE-EABI-GCC.EXE"
+    }
+  ],
+  "version": 4
+}

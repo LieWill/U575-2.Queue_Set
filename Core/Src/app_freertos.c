@@ -28,11 +28,12 @@
 #include "rtc.h"
 #include "queue.h"
 #include "semphr.h"
+#include "event_groups.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+#define SendDate 0x02
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -47,12 +48,13 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-QueueHandle_t TimeQueue;
-QueueHandle_t DateQueue;
+QueueHandle_t TimeQueue, DateQueue;
 RTC_TimeTypeDef SetTime;
 RTC_DateTypeDef SetDate;
 QueueSetHandle_t QueueSet1;
+EventGroupHandle_t RTCEvent;
 uint8_t RX_Data[100];
+int wake = 0;
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -77,7 +79,9 @@ char StringDetect(char *str, char *target);
 void MX_FREERTOS_Init(void)
 {
     /* USER CODE BEGIN Init */
-
+    HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, GPIO_PIN_SET);
+    OLED_Init();
+    HAL_UARTEx_ReceiveToIdle_DMA(&huart1, RX_Data, 100);
     /* USER CODE END Init */
 
     /* USER CODE BEGIN RTOS_MUTEX */
@@ -118,6 +122,11 @@ void MX_FREERTOS_Init(void)
 
     /* USER CODE BEGIN RTOS_EVENTS */
     /* add events, ... */
+    RTCEvent = xEventGroupCreate();
+    if (RTCEvent == NULL) {
+        OLED_Printf(1, 1, "EventGroup Failed");
+        while (1);
+    }
     BaseType_t err = xQueueAddToSet(TimeQueue, QueueSet1);
     err            = xQueueAddToSet(DateQueue, QueueSet1);
     if (err != pdPASS) {
@@ -161,22 +170,27 @@ void OledShowTask(void *argument)
             xQueueReceive(DateQueue, &GetDate, portMAX_DELAY);
             OLED_Printf(2, 1, "%02d/%02d/%02d", GetDate.Year, GetDate.Month, GetDate.Date);
         }
+        OLED_Printf(4, 1, "wake=%d", wake);
         osDelay(100);
     }
 }
 void RtcGetTime(void *argument)
 {
-
-    HAL_UARTEx_ReceiveToIdle_DMA(&huart1, RX_Data, 100);
     RTC_TimeTypeDef GetTime = {0};
     RTC_DateTypeDef GetDate = {0};
+    xEventGroupSetBits(RTCEvent, SendDate);
     for (;;) {
         HAL_RTC_GetTime(&hrtc, &GetTime, RTC_FORMAT_BIN);
-
         HAL_RTC_GetDate(&hrtc, &GetDate, RTC_FORMAT_BIN);
+        //^ 每一天的日期更新
+        if (GetTime.Hours == 0 && GetDate.Month == 0 && GetDate.Date == 0)
+            xEventGroupSetBits(RTCEvent, SendDate);
+        //^ 等待事件组超时就返回相应标志位的值
+        if (xEventGroupWaitBits(RTCEvent, SendDate, pdTRUE, pdFALSE, 10) != SendDate) {
+            xQueueSend(DateQueue, &GetDate, 0);
+        }
         xQueueSend(TimeQueue, &GetTime, 0);
         osDelay(500);
-        xQueueSend(DateQueue, &GetDate, 0);
     }
 }
 
@@ -204,8 +218,9 @@ char StringDetect(char *str, char *target)
 }
 
 //* 中断程序
-void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
+void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *hrtc)
 {
+    wake++;
 }
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
@@ -216,6 +231,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
             sscanf((char *)RX_Data, "SD:%d-%d-%d", (int *)&year, (int *)&SetDate.Month, (int *)&SetDate.Date);
             SetDate.Year = year;
             HAL_RTC_SetDate(&hrtc, &SetDate, RTC_FORMAT_BIN);
+            xEventGroupSetBitsFromISR(RTCEvent, SendDate, NULL);
             HAL_UART_Transmit(&huart1, (uint8_t *)"Data setting successful\n", 24, 100);
         } else if (StringDetect("ST:*:*:*", (char *)RX_Data)) {
             sscanf((char *)RX_Data, "ST:%d:%d:%d", (int *)&SetTime.Hours, (int *)&SetTime.Minutes, (int *)&SetTime.Seconds);
