@@ -20,17 +20,25 @@
 #include "main.h"
 #include "cmsis_os2.h"
 #include "adc.h"
+#include "dma2d.h"
 #include "gpdma.h"
 #include "i2c.h"
 #include "icache.h"
 #include "memorymap.h"
 #include "rtc.h"
+#include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "OLED.H"
+#include "CST816T.h"
+#include <string.h>
+#include "st7789v.h"
+#include "image.h"
+#include "MyHead.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,7 +59,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+extern int fps                    = 0;
+extern uint16_t buffer[240 * 280] = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -105,8 +114,21 @@ int main(void)
     MX_USART1_UART_Init();
     MX_I2C2_Init();
     MX_RTC_Init();
+    MX_SPI1_Init();
+    MX_TIM3_Init();
+    MX_I2C3_Init();
+    MX_DMA2D_Init();
+    MX_TIM1_Init();
     /* USER CODE BEGIN 2 */
-
+    CST816T_Init();
+    spi_setDataLength(SPI_DATASIZE_8BIT);
+    LCD_init(0);
+    OLED_Init();
+    Dma2D_Fill(buffer, 240, 280, 0, RGB888toRGB565(132, 115, 89));
+    Dma2D_Fill(buffer, 240, 140, 0, RGB888toRGB565(56, 52, 41));
+    Dma2D_Memcopy(RGB565, gImage_MyHead, buffer, 240, 240, 0, 20);
+    OLED_Printf(1, 1, "start");
+    HAL_TIM_Base_Start_IT(&htim1);
     /* USER CODE END 2 */
 
     /* Init scheduler */
@@ -225,7 +247,10 @@ static void SystemPower_Config(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     /* USER CODE BEGIN Callback 0 */
-
+    if (htim == &htim1) {
+        // OLED_Printf(2, 1, "FPS: %d  ", fps);
+        // fps = 0;
+    }
     /* USER CODE END Callback 0 */
     if (htim->Instance == TIM6) {
         HAL_IncTick();

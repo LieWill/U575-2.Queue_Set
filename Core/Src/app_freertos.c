@@ -29,6 +29,12 @@
 #include "queue.h"
 #include "semphr.h"
 #include "event_groups.h"
+#include "MyHead.h"
+#include "CST816T.h"
+#include <string.h>
+#include "st7789v.h"
+#include "image.h"
+#include "dma2d.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,7 +61,8 @@ QueueSetHandle_t QueueSet1;
 EventGroupHandle_t RTCEvent;
 uint8_t RX_Data[100];
 int wake = 0;
-
+extern int fps;
+extern uint16_t buffer[240 * 280];
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -69,6 +76,8 @@ const osThreadAttr_t defaultTask_attributes = {
 void OledShowTask(void *argument);
 void RtcGetTime(void *argument);
 char StringDetect(char *str, char *target);
+void GetTouch(void *argument);
+void LcdShow(void *argument);
 /* USER CODE END FunctionPrototypes */
 
 /**
@@ -116,8 +125,10 @@ void MX_FREERTOS_Init(void)
 
     /* USER CODE BEGIN RTOS_THREADS */
     /* add threads, ... */
-    xTaskCreate(OledShowTask, "OledShowTask", 1024, NULL, osPriorityNormal, NULL);
+    // xTaskCreate(OledShowTask, "OledShowTask", 256, NULL, osPriorityNormal, NULL);
+    xTaskCreate(LcdShow, "LcdShow", 256, NULL, osPriorityNormal, NULL);
     xTaskCreate(RtcGetTime, "RtcGetTime", 256, NULL, osPriorityNormal, NULL);
+    xTaskCreate(GetTouch, "GetTouch", 256, NULL, osPriorityNormal, NULL);
     /* USER CODE END RTOS_THREADS */
 
     /* USER CODE BEGIN RTOS_EVENTS */
@@ -154,8 +165,8 @@ void StartDefaultTask(void *argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-//* 把队列添加到队列集后，队列集会自动检测队列中的数据是否接收。
-//!! 注意：读队列前，需要读队列集信息，不然无法读队列
+//* ??????????????????????????????
+//!! ????????????????????????
 void OledShowTask(void *argument)
 {
     RTC_TimeTypeDef GetTime = {0};
@@ -170,7 +181,11 @@ void OledShowTask(void *argument)
             xQueueReceive(DateQueue, &GetDate, portMAX_DELAY);
             OLED_Printf(2, 1, "%02d/%02d/%02d", GetDate.Year, GetDate.Month, GetDate.Date);
         }
-        OLED_Printf(4, 1, "wake=%d", wake);
+        if (wake) {
+            OLED_Printf(4, 1, "fps=%d  ", fps);
+            wake = 0;
+            fps  = 0;
+        }
         osDelay(100);
     }
 }
@@ -182,10 +197,10 @@ void RtcGetTime(void *argument)
     for (;;) {
         HAL_RTC_GetTime(&hrtc, &GetTime, RTC_FORMAT_BIN);
         HAL_RTC_GetDate(&hrtc, &GetDate, RTC_FORMAT_BIN);
-        //^ 每一天的日期更新
+        //^ ????????
         if (GetTime.Hours == 0 && GetDate.Month == 0 && GetDate.Date == 0)
             xEventGroupSetBits(RTCEvent, SendDate);
-        //^ 等待事件组超时就返回相应标志位的值
+        //^ ?????????????????
         if (xEventGroupWaitBits(RTCEvent, SendDate, pdTRUE, pdFALSE, 10) != SendDate) {
             xQueueSend(DateQueue, &GetDate, 0);
         }
@@ -195,11 +210,11 @@ void RtcGetTime(void *argument)
 }
 
 /**
- * @brief 检查字符串str中是否包含字符串target
- * @param str 需要检查的字符串
- * @param target 目标字符串
- * @note str和target中包含的字符串可以包含通配符'*'，表示任意字符或任意长度字符串
- * @return 相同返回1，不相同返回0
+ * @brief ?????str????????target
+ * @param str ????????
+ * @param target ?????
+ * @note str?target??????????????'*'???????????????
+ * @return ????1??????0
  */
 char StringDetect(char *str, char *target)
 {
@@ -217,10 +232,66 @@ char StringDetect(char *str, char *target)
     return 1;
 }
 
-//* 中断程序
+void GetTouch(void *argument)
+{
+    uint16_t x = 0, y = 0, Gesture = 0;
+    int touch       = 0;
+    TouchType Touch = {0};
+    Touch.X         = 100;
+    while (1) {
+        if (CST816_GetAction(&x, &y, &Gesture)) {
+            if (touch == 0) {
+                touch = 1;
+                OLED_Clear();
+            }
+            // osDelay(10);
+            OLED_Printf(1, 1, "x=%d  ", x);
+            OLED_Printf(2, 1, "y=%d  ", y);
+            OLED_Printf(3, 1, "Gesture=%d  ", Gesture);
+        } else {
+            if (touch == 1) {
+                touch = 0;
+                OLED_Clear();
+            }
+            OLED_Printf(1, 1, "NO TOUCH");
+        }
+        osDelay(0);
+    }
+}
+
+uint16_t buffer2[240 * 280] = {0};
+
+void LcdShow(void *argument)
+{
+    int cot = 0;
+    while (1) {
+        float speed = 5;
+        for (int i = 210; i >= 0 && i <= 210; i -= speed, speed -= 0.1) {
+            if (cot % 2 == 1) {
+                Dma2D_Fill(buffer, 240, 280, 0, RGB888toRGB565(56, 52, 41));
+                Dma2D_Memcopy(RGB565, gImage_MyHead, buffer, 240, 240, 0, 20);
+                // Dma2D_Memcopy(RGB565, gImage_1, buffer, 60, 60, 75, i);
+                Dma2D_Mixcolorsbulk(gImage_1, gImage_MyHead + 50 + i * 240, buffer + 240 * 10 + 50 + i * 240, 0, 180, 180, 60, 60, 255);
+                LCD_drawImage(buffer2, 0, 0, 240, 280);
+                fps++;
+                cot++;
+            } else {
+                Dma2D_Fill(buffer2, 240, 280, 0, RGB888toRGB565(56, 52, 41));
+                Dma2D_Memcopy(RGB565, gImage_MyHead, buffer2, 240, 240, 0, 20);
+                // Dma2D_Memcopy(RGB565, gImage_1, buffer, 60, 60, 75, i);
+                Dma2D_Mixcolorsbulk(gImage_1, gImage_MyHead + 50 + i * 240, buffer2 + 240 * 10 + 50 + i * 240, 0, 180, 180, 60, 60, 255);
+                LCD_drawImage(buffer, 0, 0, 240, 280);
+                fps++;
+                cot++;
+            }
+        }
+    }
+}
+
 void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *hrtc)
 {
     wake++;
+    // fps = 0;
 }
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)

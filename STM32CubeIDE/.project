@@ -69,6 +69,11 @@
 			<locationURI>PARENT-1-PROJECT_LOC/Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_dma.c</locationURI>
 		</link>
 		<link>
+			<name>Drivers/STM32U5xx_HAL_Driver/stm32u5xx_hal_dma2d.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_dma2d.c</locationURI>
+		</link>
+		<link>
 			<name>Drivers/STM32U5xx_HAL_Driver/stm32u5xx_hal_dma_ex.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_dma_ex.c</locationURI>
@@ -144,6 +149,16 @@
 			<locationURI>PARENT-1-PROJECT_LOC/Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_rtc_ex.c</locationURI>
 		</link>
 		<link>
+			<name>Drivers/STM32U5xx_HAL_Driver/stm32u5xx_hal_spi.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_spi.c</locationURI>
+		</link>
+		<link>
+			<name>Drivers/STM32U5xx_HAL_Driver/stm32u5xx_hal_spi_ex.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_spi_ex.c</locationURI>
+		</link>
+		<link>
 			<name>Drivers/STM32U5xx_HAL_Driver/stm32u5xx_hal_tim.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Drivers/STM32U5xx_HAL_Driver/Src/stm32u5xx_hal_tim.c</locationURI>
@@ -172,6 +187,11 @@
 			<name>Application/User/Core/app_freertos.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Core/Src/app_freertos.c</locationURI>
+		</link>
+		<link>
+			<name>Application/User/Core/dma2d.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Core/Src/dma2d.c</locationURI>
 		</link>
 		<link>
 			<name>Application/User/Core/gpdma.c</name>
@@ -209,6 +229,11 @@
 			<locationURI>PARENT-1-PROJECT_LOC/Core/Src/rtc.c</locationURI>
 		</link>
 		<link>
+			<name>Application/User/Core/spi.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Core/Src/spi.c</locationURI>
+		</link>
+		<link>
 			<name>Application/User/Core/stm32u5xx_hal_msp.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Core/Src/stm32u5xx_hal_msp.c</locationURI>
@@ -222,6 +247,11 @@
 			<name>Application/User/Core/stm32u5xx_it.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Core/Src/stm32u5xx_it.c</locationURI>
+		</link>
+		<link>
+			<name>Application/User/Core/tim.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Core/Src/tim.c</locationURI>
 		</link>
 		<link>
 			<name>Application/User/Core/usart.c</name>

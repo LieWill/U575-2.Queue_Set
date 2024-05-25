@@ -55,8 +55,16 @@ void DebugMon_Handler(void);
 void RTC_IRQHandler(void);
 void GPDMA1_Channel0_IRQHandler(void);
 void GPDMA1_Channel1_IRQHandler(void);
+void GPDMA1_Channel3_IRQHandler(void);
+void TIM1_BRK_IRQHandler(void);
+void TIM1_UP_IRQHandler(void);
 void TIM6_IRQHandler(void);
+void SPI1_IRQHandler(void);
 void USART1_IRQHandler(void);
+void GPDMA1_Channel10_IRQHandler(void);
+void GPDMA1_Channel11_IRQHandler(void);
+void GPDMA1_Channel12_IRQHandler(void);
+void I2C3_EV_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 
 /* USER CODE END EFP */

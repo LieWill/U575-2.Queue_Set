@@ -61,6 +61,12 @@ void Error_Handler(void);
 #define USER_BUTTON_GPIO_Port GPIOC
 #define VBUS_SENSE_Pin GPIO_PIN_2
 #define VBUS_SENSE_GPIO_Port GPIOC
+#define DC_Pin GPIO_PIN_0
+#define DC_GPIO_Port GPIOB
+#define RST_Pin GPIO_PIN_1
+#define RST_GPIO_Port GPIOB
+#define CS_Pin GPIO_PIN_2
+#define CS_GPIO_Port GPIOB
 #define UCPD_FLT_Pin GPIO_PIN_14
 #define UCPD_FLT_GPIO_Port GPIOB
 #define UCPD1_CC2_Pin GPIO_PIN_15
@@ -83,6 +89,8 @@ void Error_Handler(void);
 #define UCPD_DBn_GPIO_Port GPIOB
 #define LED_BLUE_Pin GPIO_PIN_7
 #define LED_BLUE_GPIO_Port GPIOB
+#define T_RST_Pin GPIO_PIN_0
+#define T_RST_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
 
